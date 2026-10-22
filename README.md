@@ -111,3 +111,36 @@ Automatic scheduling on Linux may use systemd timers or cron. A real deployment 
 An example Hermes skill is included under skills/gdn-shared-brain/SKILL.md. Use it as an additional tool skill without replacing native agent memory.
 
 For GitHub Actions CI, copy examples/github-actions-test.yml to .github/workflows/test.yml using credentials with workflow write permission.
+
+## Grok custom connector: OAuth instead of pasted API keys
+
+Custom Grok connectors may offer only a name and MCP URL. For that surface,
+the server supports OAuth 2.1 authorization-code + PKCE, dynamic client
+registration, protected-resource discovery, scoped read-only access tokens,
+refresh token rotation, and owner-controlled approval.
+
+Example public HTTPS paths on your own domain:
+
+- /mcp
+- /.well-known/oauth-protected-resource
+- /.well-known/oauth-protected-resource/mcp
+- /.well-known/oauth-authorization-server
+- /register
+- /authorize
+- /token
+- /oauth/approve
+
+Proxy all paths to the same local server through TLS; do not expose the
+application's loopback port to the internet. Set GDN_BRAIN_PUBLIC_HOST to your
+public host. The OAuth approval password is generated on first start in the
+private directory alongside GDN_BRAIN_TOKENS. Obtain it on your trusted server
+only; never commit it or paste it into a public chat. Login is read-only by
+design; write-enabled access remains a separate manually provisioned bearer
+token. Existing tokens and local Hermes MCP can coexist with OAuth.
+
+Example endpoint for your own installation:
+https://brain.example.com/mcp
+
+Only authorize an OAuth request you initiated. Provider compatibility can
+vary; use the provider's UI to complete the flow. For example, the Grok UI
+may send the user to /oauth/approve after connector registration.

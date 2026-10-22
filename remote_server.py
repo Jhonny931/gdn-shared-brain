@@ -13,6 +13,7 @@ from mcp.types import ToolAnnotations
 from gdn_brain import DEFAULT_DB, get_project, list_projects
 from dashboard import get_dashboard
 from mcp_server import app as write_app
+from oauth_bridge import app as oauth_app, provider as oauth_provider, RESOURCE as OAUTH_RESOURCE
 
 DB = os.environ.get("GDN_BRAIN_DB", str(DEFAULT_DB))
 PUBLIC_HOST = os.environ.get("GDN_BRAIN_PUBLIC_HOST", "localhost")
@@ -71,6 +72,12 @@ class ProtectedMCP:
             return
         if scope["type"]!="http":
             return await self._reject(send,403,"Forbidden")
+        path=scope.get("path","")
+        if path in ("/.well-known/oauth-protected-resource",
+                    "/.well-known/oauth-protected-resource/mcp",
+                    "/.well-known/oauth-authorization-server",
+                    "/authorize","/token","/register","/oauth/approve"):
+            return await oauth_app(scope,receive,send)
         hdr={k.lower():v for k,v in scope.get("headers",[])}
         auth=hdr.get(b"authorization",b"").decode("ascii","ignore")
         provided=auth[7:].strip() if auth.lower().startswith("bearer ") else ""
@@ -78,15 +85,22 @@ class ProtectedMCP:
         for label,value in self._tokens.items():
             if hmac.compare_digest(provided,value):
                 access=label
+        if not access and provided:
+            oauth=await oauth_provider.load_access_token(provided)
+            if oauth and oauth.resource==OAUTH_RESOURCE and "brain:read" in oauth.scopes:
+                access="oauth-read"
         if not access:
-            return await self._reject(send,401,"Unauthorized",b"Bearer")
+            challenge=("Bearer realm=\"GDN Shared Brain\", "
+              "resource_metadata=\"https://"+PUBLIC_HOST+
+              "/.well-known/oauth-protected-resource\", scope=\"brain:read\"")
+            return await self._reject(send,401,"Unauthorized",challenge.encode())
         now=time.monotonic()
         bucket=self.buckets[access]
         while bucket and now-bucket[0]>60: bucket.popleft()
         if len(bucket)>=120:
             return await self._reject(send,429,"Too Many Requests")
         bucket.append(now)
-        await (reader_asgi if access=="reader" else writer_asgi)(scope,receive,send)
+        await (writer_asgi if access=="writer" else reader_asgi)(scope,receive,send)
 
     async def _lifespan(self,scope,receive,send):
         # Run both MCP session manager lifespans in parallel.
