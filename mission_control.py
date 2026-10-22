@@ -15,7 +15,7 @@ from collections import Counter,defaultdict
 from datetime import datetime,timezone
 from zoneinfo import ZoneInfo
 from urllib.parse import urlparse
-from gdn_brain import list_projects,get_project
+from gdn_brain import list_projects,get_project,connect
 from brain_tasks import list_tasks
 
 STATUS={
@@ -93,6 +93,25 @@ def render():
     agent=sorted((t for t in active_task if t["owner"]=="agent"),key=lambda t:(t["priority"],t["title"]))
     readable=datetime.now(ZoneInfo("Asia/Bangkok")).strftime("%d.%m.%Y · %H:%M")
     archive='<div class="empty" id="empty" hidden>По этим условиям проекты не найдены.</div>'
+    # Only meaningful, source-backed records; exclude creation/import housekeeping.
+    week_items=[]
+    with connect() as con:
+        cutoff=datetime.now(timezone.utc).timestamp()-7*86400
+        rows=con.execute("""
+            SELECT p.name, e.detail, e.created_at,e.actor
+            FROM events e JOIN projects p ON p.id=e.project_id
+            WHERE e.actor IN ('source-signal-sync','mission-control-release',
+                'vps-source-review','gdn-oauth-repair','mcp-agent','manual')
+            ORDER BY e.id DESC LIMIT 40
+        """).fetchall()
+        for row in rows:
+            try:
+                if datetime.fromisoformat(row["created_at"]).timestamp()<cutoff:continue
+            except ValueError:continue
+            if len(week_items)>=8:break
+            week_items.append('<div class="week-item"><span>'+esc(row["created_at"][:16].replace("T"," "))+
+                ' UTC · '+esc(row["name"])+'</span><p>'+esc(row["detail"])+'</p></div>')
+    week_html=''.join(week_items) or '<p class="muted">Пока нет подтверждённых событий за неделю.</p>'
     def queue(tasks):
         return "".join('<div class="qitem"><span class="qproject">'+esc(next((p["name"] for p in projects if p["id"]==t["project_id"]),t["project_id"]))+'</span><div>'+esc(t["title"])+'</div></div>' for t in tasks[:6]) or '<span class="muted">Нет назначенных задач.</span>'
     page='''<!DOCTYPE html>
@@ -135,6 +154,10 @@ a{color:var(--mint);text-decoration:none}button,input{font:inherit}button{cursor
 .proof{color:var(--mint)}.uncertain{color:var(--amber)}
 .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}.copy,.extern{border:1px solid #588c7f;border-radius:10px;color:var(--mint);background:#214039;padding:9px 13px;font-size:13px}
 .extern{background:transparent}.empty{padding:24px;color:var(--muted);text-align:center}
+.week{border:1px solid var(--line);background:var(--panel);border-radius:13px;margin:18px 0;padding:14px 16px}
+.week summary{font-weight:750;cursor:pointer}.week-item{border-top:1px solid var(--line);padding:11px 0}
+.week-item:first-of-type{margin-top:12px}.week-item span{font-size:11px;color:var(--mint)}
+.week-item p{font-size:13px;margin:3px 0 0;color:#c6d4d6}
 .note{font-size:12px;color:var(--muted);line-height:1.5;margin-top:22px;border-top:1px solid var(--line);padding-top:18px}
 footer{color:var(--muted);font-size:12px;text-align:center;margin-top:34px}
 @media(max-width:650px){.shell{padding:16px 13px 88px}.metrics{grid-template-columns:repeat(2,1fr)}.queues{grid-template-columns:1fr}.metric b{font-size:24px}}
@@ -153,6 +176,7 @@ footer{color:var(--muted);font-size:12px;text-align:center;margin-top:34px}
 <div class="section-head"><h2>Следующие действия</h2><small>По исполнителям</small></div>
 <div class="queues"><div class="queue"><h2>Нужно от тебя</h2>%%USER_QUEUE%%</div>
 <div class="queue"><h2>Работа AI-агентов</h2>%%AGENT_QUEUE%%</div></div>
+<details class="week"><summary>Что изменилось за последние 7 дней</summary>%%WEEK%%</details>
 <div class="section-head"><h2>Реестр</h2><small>Нажми карточку для подробностей</small></div>
 <div class="filters">
 <button class="filter selected" data-status="all">Основные (%%COUNT%%)</button>
@@ -205,6 +229,7 @@ show();
       "%%ACTIVE%%":str(active["active"]),"%%BLOCKED%%":str(active["blocked"]),
       "%%RESEARCH%%":str(len(research)),
       "%%USER_QUEUE%%":queue(mine),"%%AGENT_QUEUE%%":queue(agent),
+      "%%WEEK%%":week_html,
       "%%CARDS%%":"".join(card(p,byproject[p["id"]]) for p in cores+research),
       "%%EMPTY%%":archive
     }
