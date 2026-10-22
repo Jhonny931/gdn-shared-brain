@@ -43,3 +43,27 @@ class BrainTests(unittest.TestCase):
 
 if __name__=="__main__":
     unittest.main()
+
+class TaskTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp=tempfile.TemporaryDirectory()
+        self.db=Path(self.tmp.name)/"brain.sqlite3"
+        put_project(self.db,id="sample",name="Sample")
+    def tearDown(self):self.tmp.cleanup()
+    def test_task_and_concurrency(self):
+        from brain_tasks import save_task,list_tasks
+        task=save_task(self.db,id="sample-next",project_id="sample",title="Do the next step",owner="user")
+        self.assertEqual(task["version"],1)
+        self.assertEqual(len(list_tasks(self.db,owner="user")),1)
+        with self.assertRaisesRegex(ValueError,"expected_version"):
+            save_task(self.db,id="sample-next",status="done")
+        done=save_task(self.db,id="sample-next",status="done",expected_version=1)
+        self.assertEqual(done["version"],2)
+        with self.assertRaises(ValueError):
+            save_task(self.db,id="sample-next",status="todo",expected_version=1)
+    def test_reject_invalid_owner_and_secret(self):
+        from brain_tasks import save_task
+        with self.assertRaises(ValueError):
+            save_task(self.db,id="sample-bad",project_id="sample",title="Invalid",owner="anonymous")
+        with self.assertRaises(ValueError):
+            save_task(self.db,id="sample-bad",project_id="sample",title="password=not_allowed")

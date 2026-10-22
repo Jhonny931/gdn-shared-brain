@@ -24,8 +24,8 @@ async def main():
         except urllib.error.HTTPError as e:
             assert e.code==401,e.code
     import httpx2
-    for level,expected in (("reader",{"brain_list_projects","brain_get_project","brain_dashboard"}),
-                           ("writer",{"brain_list_projects","brain_get_project","brain_dashboard","brain_save_project","brain_add_checkpoint"})):
+    for level,expected in (("reader",{"brain_list_projects","brain_get_project","brain_dashboard","brain_list_tasks"}),
+                           ("writer",{"brain_list_projects","brain_get_project","brain_dashboard","brain_save_project","brain_add_checkpoint","brain_save_task","brain_list_tasks"})):
         async with httpx2.AsyncClient(headers={"Authorization":"Bearer "+keys[level]}, trust_env=False) as client:
             async with streamable_http_client(URL,http_client=client) as (read,write):
                 async with ClientSession(read,write) as s:

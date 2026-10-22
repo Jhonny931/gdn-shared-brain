@@ -19,3 +19,6 @@ private/
 *.pre-oauth-*
 oauth.sqlite3*
 oauth-owner-password
+
+# local one-time import contains deployment-specific project mapping
+bootstrap_portfolio.py

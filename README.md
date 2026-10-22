@@ -144,3 +144,42 @@ https://brain.example.com/mcp
 Only authorize an OAuth request you initiated. Provider compatibility can
 vary; use the provider's UI to complete the flow. For example, the Grok UI
 may send the user to /oauth/approve after connector registration.
+
+
+## Project tasks and mobile Mission Control
+
+Shared Brain stores both project cards and explicit tasks with a responsible owner: user,
+agent, or external. Tasks support todo, in_progress, blocked, done and canceled, with
+version-checked updates so two assistants cannot silently overwrite each other's
+progress. The MCP tools brain_list_tasks and brain_save_task operate on those tasks.
+
+For a mobile-friendly read-only overview, run the static generator:
+
+    python3 mission_control.py --out /path/to/your/protected/webroot/mission/index.html
+
+The output must be served only behind authentication, and should never be committed to
+the public repository: it contains the user's project titles, tasks and private status.
+The example deployment uses an existing password-protected office portal and refreshes
+every five minutes using a systemd timer; no database credentials are exposed to browsers.
+
+For resuming work with another AI, open a card and tap Copy command. Paste it into any
+connected agent; the agent retrieves the live card and tasks from Shared Brain rather
+than trusting the webpage's previous snapshot.
+
+The first-time source portfolio import should be performed using a local script outside
+the public repo. Avoid uploading customer information, API keys, private chat transcripts
+or raw agent memory files.
+
+Mission Control has a private, optional per-user link registry:
+
+    ~/.config/gdn-shared-brain/mission-links.json
+
+It is an optional JSON map of project IDs to label/URL pairs, for example
+{"demo": [["Project site", "https://example.com"]]}.
+Set GDN_MISSION_LINKS to override the path. Project link mappings remain on the
+owner's VPS and are not bundled with the open-source software.
+
+The optional sync_signals.py job records minimal source-backed checkpoints only when
+a known signal changes (for example, a new scan result or systemd service status).
+It does not import private messages, raw lead payloads or credentials, nor does it
+mark a product as completed simply because its process is running.

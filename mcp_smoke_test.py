@@ -21,7 +21,7 @@ async def main():
                 listed = await session.list_tools()
                 names = {t.name for t in listed.tools}
                 assert names == {"brain_list_projects","brain_get_project",
-                                 "brain_save_project","brain_add_checkpoint","brain_dashboard"}, names
+                                 "brain_save_project","brain_add_checkpoint","brain_dashboard","brain_list_tasks","brain_save_task"}, names
                 created = await session.call_tool("brain_save_project", arguments={
                     "project_id":"mcp-test", "name":"MCP Smoke Test",
                     "next_action":"Verify listing"})
@@ -31,7 +31,14 @@ async def main():
                 assert not fetched.is_error, fetched
                 l = await session.call_tool("brain_list_projects", arguments={})
                 assert not l.is_error, l
-                print("PASS: MCP initialize, tools/list, create, read, list")
+                task=await session.call_tool("brain_save_task",arguments={
+                    "task_id":"mcp-task-smoke","project_id":"mcp-test",
+                    "title":"Verify task roundtrip","owner":"agent"})
+                assert not task.is_error,task
+                tasks=await session.call_tool("brain_list_tasks",arguments={
+                    "project_id":"mcp-test"})
+                assert not tasks.is_error,tasks
+                print("PASS: MCP initialize, tools/list, projects and tasks read/write")
 
 if __name__=="__main__":
     asyncio.run(main())

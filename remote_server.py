@@ -12,6 +12,7 @@ from mcp.server.transport_security import TransportSecuritySettings
 from mcp.types import ToolAnnotations
 from gdn_brain import DEFAULT_DB, get_project, list_projects
 from dashboard import get_dashboard
+from brain_tasks import list_tasks
 from mcp_server import app as write_app
 from oauth_bridge import app as oauth_app, provider as oauth_provider, RESOURCE as OAUTH_RESOURCE
 
@@ -34,7 +35,15 @@ def brain_dashboard() -> dict:
 @READER.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def brain_get_project(project_id: str) -> dict:
     """Read a project and its latest checkpoints."""
-    return get_project(DB, id=project_id) or {"error":"project_not_found"}
+    project=get_project(DB,id=project_id)
+    if project is None:return {"error":"project_not_found"}
+    project["tasks"]=list_tasks(DB,project_id=project_id)
+    return project
+
+@READER.tool(annotations=ToolAnnotations(readOnlyHint=True))
+def brain_list_tasks(project_id: str = "", owner: str = "", status: str = "") -> list[dict]:
+    """Read tasks including who needs to act next."""
+    return list_tasks(DB,project_id=project_id,owner=owner,status=status)
 
 def make_mcp(server):
     return server.streamable_http_app(
