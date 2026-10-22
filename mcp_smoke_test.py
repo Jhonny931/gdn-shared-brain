@@ -21,7 +21,7 @@ async def main():
                 listed = await session.list_tools()
                 names = {t.name for t in listed.tools}
                 assert names == {"brain_list_projects","brain_get_project",
-                                 "brain_save_project","brain_add_checkpoint"}, names
+                                 "brain_save_project","brain_add_checkpoint","brain_dashboard"}, names
                 created = await session.call_tool("brain_save_project", arguments={
                     "project_id":"mcp-test", "name":"MCP Smoke Test",
                     "next_action":"Verify listing"})

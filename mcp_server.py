@@ -1,17 +1,24 @@
 """MCP adapter for GDN Shared Brain; install optional mcp Python SDK."""
 import os
 from mcp.server import MCPServer
+from mcp.types import ToolAnnotations
 from gdn_brain import get_project, list_projects, put_project, add_checkpoint, DEFAULT_DB
+from dashboard import get_dashboard
 
 app = MCPServer("GDN Shared Brain")
 DB = os.environ.get("GDN_BRAIN_DB", str(DEFAULT_DB))
 
-@app.tool()
+@app.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def brain_list_projects(search: str = "", status: str = "") -> list[dict]:
     """List projects, optionally filtered by search text or status."""
     return list_projects(DB, search=search, status=status)
 
-@app.tool()
+@app.tool(annotations=ToolAnnotations(readOnlyHint=True))
+def brain_dashboard() -> dict:
+    """Get mission-control overview: priorities, blockers, active projects and next actions."""
+    return get_dashboard()
+
+@app.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def brain_get_project(project_id: str) -> dict:
     """Get a project including recent checkpoints and its current version."""
     return get_project(DB, id=project_id) or {"error": "project_not_found"}
