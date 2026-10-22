@@ -39,6 +39,12 @@ Configure an MCP client to launch mcp_server.py using the same Python environmen
 
 **Do not publish the stdio endpoint to the internet.** A hosted HTTP MCP endpoint needs TLS, authentication, authorization, and rate limiting; it is not part of this minimal version.
 
+## Hermes opt-in configuration
+
+Hermes can use this shared project register through a separate MCP connection **without replacing its native MEMORY.md/USER.md**, routing or scheduled tasks. Copy only the mcp_servers configuration in examples/hermes-mcp.yaml into your existing Hermes config, adapt the absolute paths, and test in a separate Hermes session before enabling it for a running gateway. Do not overwrite your existing Hermes config or change memory.provider.
+
+For other desktop MCP clients, run the same local Python process over stdio. For Grok and other cloud-hosted clients, a public HTTPS MCP service with real authentication is needed; the local stdio server is intentionally not reachable from the internet.
+
 ## Jack integration (read-only import)
 
 If your machine has a Jack 100BTC project-registry/registry.json, use:

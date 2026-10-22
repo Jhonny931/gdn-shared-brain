@@ -1,0 +1,8 @@
+# MERGE ONLY the mcp_servers block into your existing Hermes config.
+# Do not replace the config and do not change memory.provider.
+# Substitute the actual absolute path where you installed this repo.
+mcp_servers:
+  gdn_shared_brain:
+    command: "/absolute/path/to/gdn-shared-brain/.venv/bin/python"
+    args:
+      - "/absolute/path/to/gdn-shared-brain/mcp_server.py"
